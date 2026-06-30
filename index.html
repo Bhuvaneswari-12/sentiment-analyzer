@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodLens — AI Sentiment Analyzer</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#171a21;
+    --panel-2:#1f2330;
+    --line:#2a2f3d;
+    --text:#eef0f5;
+    --muted:#9aa1b2;
+    --pos:#3ddc97;
+    --neg:#ff5d72;
+    --neu:#ffc960;
+    --accent:#7c8cff;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(900px 500px at 12% -10%, rgba(124,140,255,0.18), transparent 60%),
+      radial-gradient(800px 500px at 110% 10%, rgba(61,220,151,0.12), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Segoe UI', system-ui, -apple-system, sans-serif;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:48px 20px 80px;
+  }
+
+  header{
+    text-align:center;
+    max-width:680px;
+    margin-bottom:36px;
+  }
+  .eyebrow{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:13px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    border:1px solid rgba(124,140,255,0.35);
+    padding:6px 14px;
+    border-radius:999px;
+    margin-bottom:18px;
+  }
+  h1{
+    font-size:38px;
+    margin:0 0 10px;
+    font-weight:700;
+    letter-spacing:-0.02em;
+  }
+  h1 span{
+    background:linear-gradient(90deg,var(--accent),#9fffd0);
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  header p{
+    color:var(--muted);
+    font-size:16px;
+    line-height:1.6;
+    margin:0;
+  }
+
+  main{
+    width:100%;
+    max-width:680px;
+  }
+
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px;
+    box-shadow:0 20px 50px -25px rgba(0,0,0,0.6);
+  }
+
+  label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:10px;
+    letter-spacing:.02em;
+  }
+
+  textarea{
+    width:100%;
+    min-height:130px;
+    resize:vertical;
+    background:#10131a;
+    border:1px solid var(--line);
+    border-radius:12px;
+    color:var(--text);
+    font-size:16px;
+    font-family:inherit;
+    padding:16px;
+    line-height:1.5;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  textarea:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(124,140,255,0.15);
+  }
+
+  .row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:14px;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+
+  .examples{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .chip{
+    font-size:12.5px;
+    color:var(--muted);
+    background:#10131a;
+    border:1px solid var(--line);
+    padding:6px 12px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:.15s ease;
+  }
+  .chip:hover{
+    color:var(--text);
+    border-color:var(--accent);
+  }
+
+  button.analyze{
+    background:linear-gradient(90deg,var(--accent),#6f7ce0);
+    color:#fff;
+    border:none;
+    font-size:15px;
+    font-weight:600;
+    padding:12px 24px;
+    border-radius:10px;
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease;
+    box-shadow:0 8px 20px -8px rgba(124,140,255,0.6);
+    white-space:nowrap;
+  }
+  button.analyze:hover{ transform:translateY(-1px); }
+  button.analyze:active{ transform:translateY(0); }
+  button.analyze:disabled{ opacity:.5; cursor:not-allowed; transform:none; }
+
+  /* Result */
+  #result{
+    margin-top:26px;
+    display:none;
+  }
+  .result-card{
+    border-radius:16px;
+    padding:26px;
+    border:1px solid var(--line);
+    text-align:center;
+    animation:pop .25s ease;
+  }
+  @keyframes pop{
+    from{ opacity:0; transform:scale(.96); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .emoji{
+    font-size:64px;
+    line-height:1;
+    margin-bottom:10px;
+    display:block;
+  }
+  .label{
+    font-size:24px;
+    font-weight:700;
+    margin-bottom:4px;
+    letter-spacing:-0.01em;
+  }
+  .confidence{
+    color:var(--muted);
+    font-size:14px;
+    margin-bottom:18px;
+  }
+
+  .bars{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    text-align:left;
+    margin-top:10px;
+  }
+  .bar-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+  }
+  .bar-row .bar-label{
+    width:78px;
+    color:var(--muted);
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-shrink:0;
+  }
+  .bar-track{
+    flex:1;
+    height:8px;
+    background:#10131a;
+    border-radius:99px;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .bar-fill{
+    height:100%;
+    border-radius:99px;
+    transition:width .5s ease;
+  }
+  .bar-pct{
+    width:42px;
+    text-align:right;
+    color:var(--muted);
+    flex-shrink:0;
+  }
+
+  .keywords{
+    margin-top:20px;
+    padding-top:18px;
+    border-top:1px solid var(--line);
+    text-align:left;
+  }
+  .keywords .kw-title{
+    font-size:12.5px;
+    color:var(--muted);
+    margin-bottom:10px;
+  }
+  .kw-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .kw{
+    font-size:13px;
+    padding:5px 11px;
+    border-radius:999px;
+    border:1px solid var(--line);
+  }
+  .kw.pos{ color:var(--pos); border-color:rgba(61,220,151,0.4); background:rgba(61,220,151,0.08); }
+  .kw.neg{ color:var(--neg); border-color:rgba(255,93,114,0.4); background:rgba(255,93,114,0.08); }
+
+  /* History */
+  #history{
+    margin-top:30px;
+  }
+  #history h2{
+    font-size:13px;
+    color:var(--muted);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin:0 0 12px;
+  }
+  .hist-item{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:8px;
+  }
+  .hist-emoji{ font-size:20px; flex-shrink:0; }
+  .hist-text{
+    flex:1;
+    font-size:13.5px;
+    color:var(--text);
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .hist-tag{
+    font-size:11px;
+    padding:3px 9px;
+    border-radius:999px;
+    flex-shrink:0;
+    font-weight:600;
+  }
+  .hist-tag.Positive{ color:var(--pos); background:rgba(61,220,151,0.1); }
+  .hist-tag.Negative{ color:var(--neg); background:rgba(255,93,114,0.1); }
+  .hist-tag.Neutral{ color:var(--neu); background:rgba(255,201,96,0.1); }
+
+  footer{
+    margin-top:50px;
+    color:var(--muted);
+    font-size:12.5px;
+    text-align:center;
+    max-width:500px;
+  }
+
+  @media (max-width:480px){
+    h1{ font-size:30px; }
+    .card{ padding:20px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">🤖 AI · Sentiment Engine</div>
+  <h1>Mood<span>Lens</span></h1>
+  <p>Paste any review or comment. The model reads it and tells you if it's Positive 😊, Negative 😠, or Neutral 😐 — instantly.</p>
+</header>
+
+<main>
+  <div class="card">
+    <label for="reviewInput">Your review or comment</label>
+    <textarea id="reviewInput" placeholder="e.g. The delivery was super fast and the product quality is amazing!"></textarea>
+
+    <div class="row">
+      <div class="examples">
+        <span class="chip" data-text="The delivery was super fast and the product quality is amazing! I will definitely order again.">😊 Try positive</span>
+        <span class="chip" data-text="Terrible experience. The item arrived broken and support never replied. Very disappointed.">😠 Try negative</span>
+        <span class="chip" data-text="The package arrived on Tuesday. It contains a charger and a manual.">😐 Try neutral</span>
+      </div>
+      <button class="analyze" id="analyzeBtn">Analyze Sentiment</button>
+    </div>
+
+    <div id="result"></div>
+  </div>
+
+  <div id="history" style="display:none;">
+    <h2>Recent analyses</h2>
+    <div id="historyList"></div>
+  </div>
+</main>
+
+<footer>
+  Runs entirely in your browser using a lexicon-based NLP scoring model — no data leaves your device.
+</footer>
+
+<script>
+/* -------------------------------------------------------
+   Lightweight lexicon-based sentiment analysis "model"
+   ------------------------------------------------------- */
+
+const POSITIVE_WORDS = {
+  good:2, great:3, excellent:4, amazing:4, awesome:4, fantastic:4, wonderful:4,
+  love:3, loved:3, loves:3, best:3, perfect:4, happy:3, glad:2, nice:2,
+  pleased:3, satisfied:3, satisfying:3, recommend:2, recommended:2, fast:1,
+  quick:1, smooth:2, beautiful:3, brilliant:3, superb:4, outstanding:4,
+  enjoy:2, enjoyed:2, enjoyable:2, comfortable:2, reliable:2, helpful:2,
+  friendly:2, affordable:1, easy:1, impressed:3, impressive:3, delicious:3,
+  fresh:1, worth:1, value:1, durable:1, premium:1, smooth:1, exceeded:2,
+  flawless:4, delight:3, delighted:3, fantasic:3, top:1, solid:1, comfy:1,
+  cool:1, fun:2, joy:3, thank:1, thanks:1, "thank you":2, awesome:4
+};
+
+const NEGATIVE_WORDS = {
+  bad:2, terrible:4, horrible:4, awful:4, worst:4, hate:3, hated:3, hates:3,
+  poor:2, disappointing:3, disappointed:3, disappointment:3, broken:3,
+  defective:3, useless:3, waste:3, slow:1, late:1, rude:2, unhelpful:2,
+  unfriendly:2, uncomfortable:2, unreliable:2, cheap:1, flimsy:2, fake:3,
+  scam:4, refund:1, complain:2, complaint:2, complaining:2, annoying:2,
+  annoyed:2, angry:3, frustrated:3, frustrating:3, regret:3, regretted:3,
+  damaged:3, faulty:3, malfunction:3, problem:2, problems:2, issue:1,
+  issues:1, never:1, ugly:2, overpriced:2, expensive:1, delay:1, delayed:1,
+  cancel:1, cancelled:1, missing:2, lost:1, error:1, fail:2, failed:2,
+  failure:2, disgusting:4, sucks:3, sad:2, unacceptable:3
+};
+
+const NEGATIONS = new Set(["not","no","never","n't","cannot","cant","don't","dont","won't","wont","didn't","didnt","isn't","isnt","wasn't","wasnt"]);
+const INTENSIFIERS = { very:1.5, really:1.4, extremely:1.8, super:1.5, so:1.3, totally:1.5, absolutely:1.7, completely:1.5 };
+
+function tokenize(text){
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function analyzeSentiment(text){
+  const tokens = tokenize(text);
+  let posScore = 0, negScore = 0;
+  const foundPos = [], foundNeg = [];
+
+  for(let i=0;i<tokens.length;i++){
+    const word = tokens[i];
+    const prev = tokens[i-1] || "";
+    const prev2 = tokens[i-2] || "";
+    const negated = NEGATIONS.has(prev) || NEGATIONS.has(prev2);
+    let multiplier = 1;
+    if(INTENSIFIERS[prev]) multiplier = INTENSIFIERS[prev];
+
+    if(POSITIVE_WORDS[word] !== undefined){
+      const weight = POSITIVE_WORDS[word] * multiplier;
+      if(negated){ negScore += weight; foundNeg.push(word); }
+      else { posScore += weight; foundPos.push(word); }
+    } else if(NEGATIVE_WORDS[word] !== undefined){
+      const weight = NEGATIVE_WORDS[word] * multiplier;
+      if(negated){ posScore += weight * 0.7; foundPos.push(word); }
+      else { negScore += weight; foundNeg.push(word); }
+    }
+  }
+
+  // exclamation marks slightly amplify whichever side is dominant
+  const exclaims = (text.match(/!/g) || []).length;
+  if(exclaims > 0){
+    if(posScore > negScore) posScore += exclaims * 0.5;
+    else if(negScore > posScore) negScore += exclaims * 0.5;
+  }
+
+  const total = posScore + negScore;
+  let label, confidence, posPct, negPct, neuPct;
+
+  if(total === 0){
+    label = "Neutral";
+    posPct = 20; negPct = 20; neuPct = 60;
+    confidence = 0.6;
+  } else {
+    const rawPos = posScore / total;
+    const rawNeg = negScore / total;
+    const diff = Math.abs(posScore - negScore);
+
+    if(diff < total * 0.15){
+      // close enough to call it neutral/mixed
+      label = "Neutral";
+      neuPct = 50;
+      posPct = Math.round(rawPos * 50);
+      negPct = 100 - neuPct - posPct;
+      confidence = 0.5 + (1 - diff/total) * 0.1;
+    } else if(posScore > negScore){
+      label = "Positive";
+      posPct = Math.round(40 + rawPos*60);
+      posPct = Math.min(posPct, 95);
+      negPct = Math.round((100-posPct) * (rawNeg));
+      neuPct = 100 - posPct - negPct;
+      confidence = Math.min(0.6 + rawPos*0.35, 0.97);
+    } else {
+      label = "Negative";
+      negPct = Math.round(40 + rawNeg*60);
+      negPct = Math.min(negPct, 95);
+      posPct = Math.round((100-negPct) * (rawPos));
+      neuPct = 100 - negPct - posPct;
+      confidence = Math.min(0.6 + rawNeg*0.35, 0.97);
+    }
+  }
+
+  posPct = Math.max(0, Math.min(100, posPct));
+  negPct = Math.max(0, Math.min(100, negPct));
+  neuPct = Math.max(0, 100 - posPct - negPct);
+
+  return {
+    label,
+    confidence: Math.round(confidence*100),
+    posPct, negPct, neuPct,
+    foundPos: [...new Set(foundPos)].slice(0,6),
+    foundNeg: [...new Set(foundNeg)].slice(0,6)
+  };
+}
+
+const META = {
+  Positive: { emoji:"😊", color:"var(--pos)", note:"This sounds like a happy customer." },
+  Negative: { emoji:"😠", color:"var(--neg)", note:"This sounds like an unhappy customer." },
+  Neutral:  { emoji:"😐", color:"var(--neu)", note:"This sounds factual or mixed, without strong emotion." }
+};
+
+const textarea = document.getElementById('reviewInput');
+const resultEl = document.getElementById('result');
+const btn = document.getElementById('analyzeBtn');
+const historyWrap = document.getElementById('history');
+const historyList = document.getElementById('historyList');
+let history = [];
+
+document.querySelectorAll('.chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    textarea.value = chip.dataset.text;
+    textarea.focus();
+  });
+});
+
+btn.addEventListener('click', ()=>{
+  const text = textarea.value.trim();
+  if(!text){
+    textarea.focus();
+    textarea.style.borderColor = 'var(--neg)';
+    setTimeout(()=> textarea.style.borderColor = 'var(--line)', 600);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+
+  setTimeout(()=>{
+    const r = analyzeSentiment(text);
+    renderResult(r);
+    addToHistory(text, r);
+    btn.disabled = false;
+    btn.textContent = 'Analyze Sentiment';
+  }, 450);
+});
+
+function renderResult(r){
+  const m = META[r.label];
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = `
+    <div class="result-card" style="border-color:${m.color}55; background:linear-gradient(180deg, ${m.color}14, transparent);">
+      <span class="emoji">${m.emoji}</span>
+      <div class="label" style="color:${m.color}">${r.label}</div>
+      <div class="confidence">${m.note} · Confidence ${r.confidence}%</div>
+
+      <div class="bars">
+        <div class="bar-row">
+          <span class="bar-label">😊 Positive</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${r.posPct}%; background:var(--pos);"></span></span>
+          <span class="bar-pct">${r.posPct}%</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">😐 Neutral</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${r.neuPct}%; background:var(--neu);"></span></span>
+          <span class="bar-pct">${r.neuPct}%</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">😠 Negative</span>
+          <span class="bar-track"><span class="bar-fill" style="width:${r.negPct}%; background:var(--neg);"></span></span>
+          <span class="bar-pct">${r.negPct}%</span>
+        </div>
+      </div>
+
+      ${(r.foundPos.length || r.foundNeg.length) ? `
+      <div class="keywords">
+        <div class="kw-title">Words that influenced this result</div>
+        <div class="kw-list">
+          ${r.foundPos.map(w=>`<span class="kw pos">+ ${w}</span>`).join('')}
+          ${r.foundNeg.map(w=>`<span class="kw neg">− ${w}</span>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function addToHistory(text, r){
+  const m = META[r.label];
+  history.unshift({text, label:r.label, emoji:m.emoji});
+  history = history.slice(0,5);
+  historyWrap.style.display = 'block';
+  historyList.innerHTML = history.map(h => `
+    <div class="hist-item">
+      <span class="hist-emoji">${h.emoji}</span>
+      <span class="hist-text">${escapeHtml(h.text)}</span>
+      <span class="hist-tag ${h.label}">${h.label}</span>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+textarea.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){
+    btn.click();
+  }
+});
+</script>
+
+</body>
+</html>
