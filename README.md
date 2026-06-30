@@ -2,8 +2,7 @@
 
 A simple, single-file website that analyzes any review or comment and predicts whether it's **Positive 😊**, **Negative 😠**, or **Neutral 😐** — instantly, right in your browser.
 
-🔗 **Live demo:** https://yourusername.github.io/sentiment-analyzer/
-*(replace this with your actual GitHub Pages link)*
+🔗 **Live demo:**  https://bhuvaneswari-12.github.io/sentiment-analyzer/
 
 ## Features
 
